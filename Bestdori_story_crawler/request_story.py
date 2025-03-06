@@ -16,13 +16,13 @@ from typing import Any, Dict, Optional, Sequence
 import requests  # type: ignore
 
 ### CONFIG
-BASE_SAVE_DIR = r'D:\Workspace\test'
+BASE_SAVE_DIR = r'.'
 EVENT_SAVE_DIR = BASE_SAVE_DIR + r'\event_story'
 BAND_SAVE_DIR = BASE_SAVE_DIR + r'\band_story'
 MAIN_SAVE_DIR = BASE_SAVE_DIR + r'\main_story'
 
 # PROXY = None
-PROXY = {'http': 'http://127.0.0.1:10809', 'https': 'http://127.0.0.1:10809'}
+PROXY = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
 
 
 ### CONSTANT
@@ -222,7 +222,8 @@ def get_main_story(id_range: Optional[Sequence[int]] = None, lang: str = 'cn') -
 
 def valid_filename(filename: str) -> str:
     return (
-        filename.replace('*', '＊')
+        filename.strip()
+        .replace('*', '＊')
         .replace(':', '：')
         .replace('/', '')
         .replace('?', '？')
