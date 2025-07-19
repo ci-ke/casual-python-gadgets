@@ -169,7 +169,7 @@ def get_band_story(
 
         for story in band_story['stories'].values():
             name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
-            synopsis = story['synopsis'][LANG_INDEX[lang]]
+            synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
             id = story['scenarioId']
 
             res2 = requests.get(
@@ -213,7 +213,7 @@ def get_main_story(id_range: Optional[Sequence[int]] = None, lang: str = 'cn') -
             continue
 
         name = f"{main_story['scenarioId']} {main_story['caption'][LANG_INDEX[lang]]} {main_story['title'][LANG_INDEX[lang]]}"
-        synopsis = main_story['synopsis'][LANG_INDEX[lang]]
+        synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
         id = main_story['scenarioId']
 
         res2 = requests.get(
