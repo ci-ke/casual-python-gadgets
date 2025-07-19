@@ -94,7 +94,10 @@ def get_event_story(event_id: int, lang: str = 'cn') -> None:
     os.makedirs(event_save_dir, exist_ok=True)
 
     if event_id == 248:
-        open(os.path.join(event_save_dir, '无剧情.txt'), 'w').close()
+        with open(
+            os.path.join(event_save_dir, '无剧情.txt'), 'w', encoding='utf8'
+        ) as f:
+            f.write('本活动没有活动剧情\n')
         return
 
     for story in res_json['stories']:
