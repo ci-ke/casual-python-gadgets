@@ -93,6 +93,10 @@ def get_event_story(event_id: int, lang: str = 'cn') -> None:
     event_save_dir = os.path.join(EVENT_SAVE_DIR, f'{event_id} {event_filename}')
     os.makedirs(event_save_dir, exist_ok=True)
 
+    if event_id == 248:
+        open(os.path.join(event_save_dir, '无剧情.txt'), 'w').close()
+        return
+
     for story in res_json['stories']:
         name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
         synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
