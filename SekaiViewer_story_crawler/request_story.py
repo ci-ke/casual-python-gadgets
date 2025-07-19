@@ -6,9 +6,11 @@
 # 组合剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/unitStories.json
 # 数据包json：https://storage.sekai.best/sekai-cn-assets/scenario/unitstory/light-sound-story-chapter/leo_01_00.asset
 
-import os
+import os, sys
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 import requests  # type: ignore
+
 
 ### CONFIG
 BASE_SAVE_DIR = r'.'
@@ -36,18 +38,31 @@ def read_story_in_json(json_data: dict[str, Any]) -> str:
     scenes = json_data['SpecialEffectData']
 
     scripts = json_data['Snippets']
+    last_script_is_effect = False
+
     for script in scripts:
         if script['Action'] == 6:
             scene = scenes[script['ReferenceIndex']]
-            if scene['EffectType'] == 8:
-                ret += '【' + scene['StringVal'] + '】\n'
+            if scene['EffectType'] == 7:
+                ret += '\n（背景切换）\n'
+                last_script_is_effect = True
+            elif scene['EffectType'] == 8:
+                ret += '\n【' + scene['StringVal'] + '】\n'
+                last_script_is_effect = True
             elif scene['EffectType'] == 24:
-                ret += '全屏幕文字：' + scene['StringVal'].replace('\n', '') + '\n'
+                if last_script_is_effect:
+                    ret += '\n'
+                ret += '（全屏幕文字）：' + scene['StringVal'].replace('\n', '') + '\n'
+                last_script_is_effect = False
         elif script['Action'] == 1:
             talk = talks[script['ReferenceIndex']]
+
+            if last_script_is_effect:
+                ret += '\n'
             ret += (
                 talk['WindowDisplayName'] + '：' + talk['Body'].replace('\n', '') + '\n'
             )
+            last_script_is_effect = False
 
     return ret[:-1]
 
@@ -187,8 +202,7 @@ def valid_filename(filename: str) -> str:
 
 if __name__ == '__main__':
     unit_getter = Unit_story_getter()
-    for i in range(1, 7):
-        unit_getter.get(i)
     event_getter = Event_story_getter()
-    for i in range(1, 137):
-        event_getter.get(i)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        executor.map(unit_getter.get, range(1, 7))
+        executor.map(event_getter.get, range(1, 141))
