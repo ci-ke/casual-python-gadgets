@@ -38,31 +38,31 @@ def read_story_in_json(json_data: dict[str, Any]) -> str:
     scenes = json_data['SpecialEffectData']
 
     scripts = json_data['Snippets']
-    last_script_is_effect = False
+    next_talk_need_newline = True
 
     for script in scripts:
         if script['Action'] == 6:
             scene = scenes[script['ReferenceIndex']]
             if scene['EffectType'] == 7:
                 ret += '\n（背景切换）\n'
-                last_script_is_effect = True
+                next_talk_need_newline = True
             elif scene['EffectType'] == 8:
                 ret += '\n【' + scene['StringVal'] + '】\n'
-                last_script_is_effect = True
+                next_talk_need_newline = True
             elif scene['EffectType'] == 24:
-                if last_script_is_effect:
+                if next_talk_need_newline:
                     ret += '\n'
                 ret += '（全屏幕文字）：' + scene['StringVal'].replace('\n', '') + '\n'
-                last_script_is_effect = False
+                next_talk_need_newline = False
         elif script['Action'] == 1:
             talk = talks[script['ReferenceIndex']]
 
-            if last_script_is_effect:
+            if next_talk_need_newline:
                 ret += '\n'
             ret += (
                 talk['WindowDisplayName'] + '：' + talk['Body'].replace('\n', '') + '\n'
             )
-            last_script_is_effect = False
+            next_talk_need_newline = False
 
     return ret[:-1]
 
