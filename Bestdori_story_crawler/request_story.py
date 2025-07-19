@@ -11,6 +11,7 @@
 # 数据包列表：https://bestdori.com/api/explorer/cn/assets/scenario/main.json
 # 数据包json：https://bestdori.com/assets/cn/scenario/main_rip/Scenariomain001.asset
 
+from concurrent.futures import ThreadPoolExecutor
 import os, sys
 from typing import Any, Dict, Optional, Sequence
 import requests  # type: ignore
@@ -21,8 +22,8 @@ EVENT_SAVE_DIR = BASE_SAVE_DIR + r'\event_story'
 BAND_SAVE_DIR = BASE_SAVE_DIR + r'\band_story'
 MAIN_SAVE_DIR = BASE_SAVE_DIR + r'\main_story'
 
-# PROXY = None
-PROXY = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
+PROXY = None
+# PROXY = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
 
 
 ### CONSTANT
@@ -47,16 +48,30 @@ def read_story_in_json(json_data: Dict[str, Dict[str, Any]]) -> str:
     scenes = json_data['Base']['specialEffectData']
 
     scripts = json_data['Base']['snippets']
+    next_talk_need_newline = True
+
     for script in scripts:
         if script['actionType'] == 6:
             scene = scenes[script['referenceIndex']]
-            if scene['effectType'] == 8:
-                ret += '【' + scene['stringVal'] + '】\n'
+            if scene['effectType'] == 7:
+                ret += '\n（背景切换）\n'
+                next_talk_need_newline = True
+            elif scene['effectType'] == 8:
+                ret += '\n【' + scene['stringVal'] + '】\n'
+                next_talk_need_newline = True
+            elif scene['effectType'] == 24:
+                if next_talk_need_newline:
+                    ret += '\n'
+                ret += '（全屏幕文字）：' + scene['stringVal'].replace('\n', '') + '\n'
+                next_talk_need_newline = False
         elif script['actionType'] == 1:
             talk = talks[script['referenceIndex']]
+            if next_talk_need_newline:
+                ret += '\n'
             ret += (
                 talk['windowDisplayName'] + '：' + talk['body'].replace('\n', '') + '\n'
             )
+            next_talk_need_newline = False
 
     return ret[:-1]
 
@@ -225,15 +240,14 @@ def valid_filename(filename: str) -> str:
         filename.strip()
         .replace('*', '＊')
         .replace(':', '：')
-        .replace('/', '')
+        .replace('/', '／')
         .replace('?', '？')
         .replace('"', "''")
     )
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 2:
-        lang = sys.argv[2]
-    else:
-        lang = 'cn'
-    get_event_story(int(sys.argv[1]), lang)
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        executor.map(lambda _: get_main_story(), range(1))
+        executor.map(lambda _: get_band_story(), range(1))
+        executor.map(get_event_story, range(1, 282))
