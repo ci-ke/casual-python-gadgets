@@ -6,6 +6,11 @@
 # 组合剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/unitStories.json
 # 数据包json：https://storage.sekai.best/sekai-cn-assets/scenario/unitstory/light-sound-story-chapter/leo_01_00.asset
 
+# 卡牌 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json
+# 卡牌剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json
+# 数据包json：https://storage.sekai.best/sekai-cn-assets/character/member/res001_no001/001001_ichika01.asset
+
+import bisect
 import os, sys
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +21,7 @@ import requests  # type: ignore
 BASE_SAVE_DIR = r'.'
 EVENT_SAVE_DIR = BASE_SAVE_DIR + r'\event_story'
 UNIT_SAVE_DIR = BASE_SAVE_DIR + r'\unit_story'
+CARD_SAVE_DIR = BASE_SAVE_DIR + r'\card_story'
 
 PROXY = None
 # PROXY = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
@@ -28,6 +34,43 @@ UNIT_ID_NAME = {
     4: 'Vivid BAD SQUAD',
     5: 'Wonderlands×Showtime',
     6: '25点，Nightcord见。',
+}
+
+CHARA_ID_UNIT_AND_NAME = {
+    1: 'LN_星乃一歌',
+    2: 'LN_天马咲希',
+    3: 'LN_望月穗波',
+    4: 'LN_日野森志步',
+    5: 'MMJ_花里实乃理',
+    6: 'MMJ_桐谷遥',
+    7: 'MMJ_桃井爱莉',
+    8: 'MMJ_日野森雫',
+    9: 'VBS_小豆泽心羽',
+    10: 'VBS_白石杏',
+    11: 'VBS_东云彰人',
+    12: 'VBS_青柳冬弥',
+    13: 'WS_天马司',
+    14: 'WS_凤笑梦',
+    15: 'WS_草薙宁宁',
+    16: 'WS_神代类',
+    17: '25时_宵崎奏',
+    18: '25时_朝比奈真冬',
+    19: '25时_东云绘名',
+    20: '25时_晓山瑞希',
+    21: '虚拟歌手_初音未来',
+    22: '虚拟歌手_镜音铃',
+    23: '虚拟歌手_镜音连',
+    24: '虚拟歌手_巡音流歌',
+    25: '虚拟歌手_MEIKO',
+    26: '虚拟歌手_KAITO',
+}
+
+RARITY_NAME = {
+    'rarity_1': '一星',
+    'rarity_2': '二星',
+    'rarity_3': '三星',
+    'rarity_4': '四星',
+    'rarity_birthday': '生日',
 }
 
 
@@ -148,7 +191,7 @@ class Unit_story_getter:
                 unit_outline = unitProfile['profileSentence']
                 break
         else:
-            raise ValueError(unit_id)
+            raise ValueError(f'bad unit id:{unit_id}')
 
         for unitStory in self.unitStories_json:
             if unitStory['seq'] == unit_id:
@@ -156,7 +199,7 @@ class Unit_story_getter:
                 episodes = unitStory['chapters'][0]['episodes']
                 break
         else:
-            raise ValueError(unit_id)
+            raise ValueError(f'bad unit id:{unit_id}')
 
         unit_filename = valid_filename(unitName)
         unit_save_dir = os.path.join(UNIT_SAVE_DIR, f'{unit_id} {unit_filename}')
@@ -189,6 +232,97 @@ class Unit_story_getter:
             print(f'get unit {unit_id} {unitName} {episode_name} done.')
 
 
+class Card_story_getter:
+    def __init__(self) -> None:
+        res = requests.get(
+            f'https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json',
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        self.cards_json: list[dict[str, Any]] = res.json()
+
+        res = requests.get(
+            f'https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json',
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        self.cardEpisodes_json: list[dict[str, Any]] = res.json()
+
+        self.cards_lookup = DictLookup(self.cards_json, 'id')
+        self.cardEpisodes_lookup = DictLookup(self.cardEpisodes_json, 'cardId')
+
+    def get(self, card_id: int) -> None:
+        card_index = self.cards_lookup.find_index(card_id)
+        cardEpisode_index = self.cardEpisodes_lookup.find_index(card_id)
+        if (card_index == -1) or (cardEpisode_index == -1):
+            print(f'card {card_id} does not exist.')
+            return
+
+        card = self.cards_json[card_index]
+        cardEpisode_1 = self.cardEpisodes_json[cardEpisode_index]
+        cardEpisode_2 = self.cardEpisodes_json[cardEpisode_index + 1]
+
+        chara_unit_and_name = CHARA_ID_UNIT_AND_NAME[card['characterId']]
+        chara_name = chara_unit_and_name.split('_')[1]
+        cardRarityType = RARITY_NAME[card['cardRarityType']]
+        card_name = card['prefix']
+        assetbundleName: str = card['assetbundleName']
+        card_id_for_chara = int(assetbundleName.split('_')[1][2:])
+
+        story_1_name = cardEpisode_1['title']
+        story_2_name = cardEpisode_2['title']
+        story_1_scenarioId = cardEpisode_1['scenarioId']
+        story_2_scenarioId = cardEpisode_2['scenarioId']
+
+        card_save_dir = os.path.join(CARD_SAVE_DIR, chara_unit_and_name)
+        os.makedirs(card_save_dir, exist_ok=True)
+
+        res = requests.get(
+            f'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{story_1_scenarioId}.asset',
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        story_1_json: dict[str, Any] = res.json()
+        text_1 = read_story_in_json(story_1_json)
+
+        res = requests.get(
+            f'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{story_2_scenarioId}.asset',
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        story_2_json: dict[str, Any] = res.json()
+        text_2 = read_story_in_json(story_2_json)
+
+        card_story_filename = valid_filename(
+            f'{card_id}_{chara_name}_{card_id_for_chara}_{cardRarityType} {card_name}'
+        )
+
+        with open(
+            os.path.join(card_save_dir, card_story_filename) + '.txt',
+            'w',
+            encoding='utf8',
+        ) as f:
+            f.write(f'{chara_name}-{card_id_for_chara} {card_name}\n\n\n')
+            f.write(story_1_name + '\n\n')
+            f.write(text_1 + '\n\n\n')
+            f.write(story_2_name + '\n\n')
+            f.write(text_2 + '\n')
+
+        print(f'get card {card_story_filename} done.')
+
+
+class DictLookup:
+    def __init__(self, data: list[dict[str, Any]], attr_name: str):
+        self.data = data
+        self.ids = [int(d[attr_name]) for d in data]  # 预提取ID列表
+
+    def find_index(self, target_id: int) -> int:
+        left_index = bisect.bisect_left(self.ids, target_id)
+        if left_index < len(self.ids) and self.ids[left_index] == target_id:
+            return left_index
+        return -1
+
+
 def valid_filename(filename: str) -> str:
     return (
         filename.strip()
@@ -203,6 +337,9 @@ def valid_filename(filename: str) -> str:
 if __name__ == '__main__':
     unit_getter = Unit_story_getter()
     event_getter = Event_story_getter()
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    card_getter = Card_story_getter()
+    with ThreadPoolExecutor(max_workers=20) as executor:
         executor.map(unit_getter.get, range(1, 7))
         executor.map(event_getter.get, range(1, 141))
+        executor.map(card_getter.get, range(1, 108))
+        executor.map(card_getter.get, range(724, 760))
