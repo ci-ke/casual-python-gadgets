@@ -83,44 +83,78 @@ RARITY_NAME = {
 }
 
 
-def read_story_in_json(json_data: dict[str, Any]) -> str:
-    ret = ''
+class Story_reader:
+    def __init__(self) -> None:
+        res = requests.get(
+            f'https://sekai-world.github.io/sekai-master-db-cn-diff/character2ds.json',
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        self.character2ds: list[dict[str, Any]] = res.json()
 
-    talks = json_data['TalkData']
-    scenes = json_data['SpecialEffectData']
+        self.character2ds_lookup = DictLookup(self.character2ds, 'id')
 
-    scripts = json_data['Snippets']
-    next_talk_need_newline = True
+    def read_story_in_json(self, json_data: dict[str, Any]) -> str:
+        ret = ''
 
-    for script in scripts:
-        if script['Action'] == 6:
-            scene = scenes[script['ReferenceIndex']]
-            if scene['EffectType'] == 7:
-                ret += '\n（背景切换）\n'
-                next_talk_need_newline = True
-            elif scene['EffectType'] == 8:
-                ret += '\n【' + scene['StringVal'] + '】\n'
-                next_talk_need_newline = True
-            elif scene['EffectType'] == 24:
+        talks = json_data['TalkData']
+        scenes = json_data['SpecialEffectData']
+
+        appearCharacters = json_data['AppearCharacters']
+        chara_id = set()
+        for chara in appearCharacters:
+            chara2dId = chara['Character2dId']
+            chara2d = self.character2ds[self.character2ds_lookup.find_index(chara2dId)]
+            if chara2d['characterId'] in CHARA_ID_UNIT_AND_NAME:
+                chara_id.add(chara2d['characterId'])
+        chara_id_list = sorted(chara_id)
+
+        if len(chara_id_list) > 0:
+            ret += (
+                '（登场角色：'
+                + '、'.join(
+                    [CHARA_ID_UNIT_AND_NAME[id].split('_')[1] for id in chara_id_list]
+                )
+                + '）\n\n'
+            )
+
+        scripts = json_data['Snippets']
+        next_talk_need_newline = True
+
+        for script in scripts:
+            if script['Action'] == 6:
+                scene = scenes[script['ReferenceIndex']]
+                if scene['EffectType'] == 7:
+                    ret += '\n（背景切换）\n'
+                    next_talk_need_newline = True
+                elif scene['EffectType'] == 8:
+                    ret += '\n【' + scene['StringVal'] + '】\n'
+                    next_talk_need_newline = True
+                elif scene['EffectType'] == 24:
+                    if next_talk_need_newline:
+                        ret += '\n'
+                    ret += (
+                        '（全屏幕文字）：' + scene['StringVal'].replace('\n', '') + '\n'
+                    )
+                    next_talk_need_newline = False
+            elif script['Action'] == 1:
+                talk = talks[script['ReferenceIndex']]
+
                 if next_talk_need_newline:
                     ret += '\n'
-                ret += '（全屏幕文字）：' + scene['StringVal'].replace('\n', '') + '\n'
+                ret += (
+                    talk['WindowDisplayName']
+                    + '：'
+                    + talk['Body'].replace('\n', '')
+                    + '\n'
+                )
                 next_talk_need_newline = False
-        elif script['Action'] == 1:
-            talk = talks[script['ReferenceIndex']]
 
-            if next_talk_need_newline:
-                ret += '\n'
-            ret += (
-                talk['WindowDisplayName'] + '：' + talk['Body'].replace('\n', '') + '\n'
-            )
-            next_talk_need_newline = False
-
-    return ret[:-1]
+        return ret[:-1]
 
 
 class Event_story_getter:
-    def __init__(self) -> None:
+    def __init__(self, reader: Story_reader) -> None:
         res = requests.get(
             f'https://sekai-world.github.io/sekai-master-db-cn-diff/events.json',
             proxies=PROXY,
@@ -134,6 +168,8 @@ class Event_story_getter:
         )
         res.raise_for_status()
         self.eventStories_json: list[dict[str, Any]] = res.json()
+
+        self.reader = reader
 
     def get(self, event_id: int) -> None:
         event = self.events_json[event_id - 1]
@@ -162,7 +198,7 @@ class Event_story_getter:
             res.raise_for_status()
             story_json: dict[str, Any] = res.json()
 
-            text = read_story_in_json(story_json)
+            text = self.reader.read_story_in_json(story_json)
 
             filename = valid_filename(episode_name)
 
@@ -178,7 +214,7 @@ class Event_story_getter:
 
 
 class Unit_story_getter:
-    def __init__(self) -> None:
+    def __init__(self, reader: Story_reader) -> None:
         res = requests.get(
             f'https://sekai-world.github.io/sekai-master-db-cn-diff/unitProfiles.json',
             proxies=PROXY,
@@ -192,6 +228,8 @@ class Unit_story_getter:
         )
         res.raise_for_status()
         self.unitStories_json: list[dict[str, Any]] = res.json()
+
+        self.reader = reader
 
     def get(self, unit_id: int) -> None:
         for unitProfile in self.unitProfiles_json:
@@ -226,7 +264,7 @@ class Unit_story_getter:
             res.raise_for_status()
             story_json: dict[str, Any] = res.json()
 
-            text = read_story_in_json(story_json)
+            text = self.reader.read_story_in_json(story_json)
 
             filename = valid_filename(episode_name)
 
@@ -242,7 +280,7 @@ class Unit_story_getter:
 
 
 class Card_story_getter:
-    def __init__(self) -> None:
+    def __init__(self, reader: Story_reader) -> None:
         res = requests.get(
             f'https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json',
             proxies=PROXY,
@@ -259,6 +297,8 @@ class Card_story_getter:
 
         self.cards_lookup = DictLookup(self.cards_json, 'id')
         self.cardEpisodes_lookup = DictLookup(self.cardEpisodes_json, 'cardId')
+
+        self.reader = reader
 
     def get(self, card_id: int) -> None:
         card_index = self.cards_lookup.find_index(card_id)
@@ -293,7 +333,7 @@ class Card_story_getter:
         )
         res.raise_for_status()
         story_1_json: dict[str, Any] = res.json()
-        text_1 = read_story_in_json(story_1_json)
+        text_1 = self.reader.read_story_in_json(story_1_json)
 
         res = requests.get(
             f'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{story_2_scenarioId}.asset',
@@ -301,7 +341,7 @@ class Card_story_getter:
         )
         res.raise_for_status()
         story_2_json: dict[str, Any] = res.json()
-        text_2 = read_story_in_json(story_2_json)
+        text_2 = self.reader.read_story_in_json(story_2_json)
 
         if sub_unit != 'none':
             sub_unit_name = f'（{UNIT_CODE_NAME[sub_unit]}）'
@@ -352,9 +392,10 @@ def valid_filename(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    unit_getter = Unit_story_getter()
-    event_getter = Event_story_getter()
-    card_getter = Card_story_getter()
+    reader = Story_reader()
+    unit_getter = Unit_story_getter(reader)
+    event_getter = Event_story_getter(reader)
+    card_getter = Card_story_getter(reader)
     with ThreadPoolExecutor(max_workers=20) as executor:
         executor.map(unit_getter.get, range(1, 7))
         executor.map(event_getter.get, range(1, 141))
