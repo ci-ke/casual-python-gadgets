@@ -36,6 +36,15 @@ UNIT_ID_NAME = {
     6: '25点，Nightcord见。',
 }
 
+UNIT_CODE_NAME = {
+    'light_sound': 'LN',
+    'idol': 'MMJ',
+    'street': 'VBS',
+    'theme_park': 'WS',
+    'school_refusal': '25时',
+    'piapro': '虚拟歌手',
+}
+
 CHARA_ID_UNIT_AND_NAME = {
     1: 'LN_星乃一歌',
     2: 'LN_天马咲希',
@@ -266,6 +275,7 @@ class Card_story_getter:
         chara_name = chara_unit_and_name.split('_')[1]
         cardRarityType = RARITY_NAME[card['cardRarityType']]
         card_name = card['prefix']
+        sub_unit = card['supportUnit']
         assetbundleName: str = card['assetbundleName']
         card_id_for_chara = int(assetbundleName.split('_')[1][2:])
 
@@ -293,8 +303,13 @@ class Card_story_getter:
         story_2_json: dict[str, Any] = res.json()
         text_2 = read_story_in_json(story_2_json)
 
+        if sub_unit != 'none':
+            sub_unit_name = f'（{UNIT_CODE_NAME[sub_unit]}）'
+        else:
+            sub_unit_name = ''
+
         card_story_filename = valid_filename(
-            f'{card_id}_{chara_name}_{card_id_for_chara}_{cardRarityType} {card_name}'
+            f'{card_id}_{chara_name}{sub_unit_name}_{card_id_for_chara}_{cardRarityType} {card_name}'
         )
 
         with open(
@@ -302,7 +317,9 @@ class Card_story_getter:
             'w',
             encoding='utf8',
         ) as f:
-            f.write(f'{chara_name}-{card_id_for_chara} {card_name}\n\n\n')
+            f.write(
+                f'{chara_name}{sub_unit_name}-{card_id_for_chara} {card_name}\n\n\n'
+            )
             f.write(story_1_name + '\n\n')
             f.write(text_1 + '\n\n\n')
             f.write(story_2_name + '\n\n')
