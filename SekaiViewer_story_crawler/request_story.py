@@ -74,6 +74,14 @@ CHARA_ID_UNIT_AND_NAME = {
     26: '虚拟歌手_KAITO',
 }
 
+EXTRA_CHARA_ID_UNIT_AND_NAME_FOR_BANNER = {
+    27: '虚拟歌手_初音未来（LN）',
+    28: '虚拟歌手_初音未来（MMJ）',
+    29: '虚拟歌手_初音未来（VBS）',
+    30: '虚拟歌手_初音未来（WS）',
+    31: '虚拟歌手_初音未来（25时）',
+}
+
 RARITY_NAME = {
     'rarity_1': '一星',
     'rarity_2': '二星',
@@ -178,11 +186,25 @@ class Event_story_getter:
         assert (event['id'] == event_id) and (eventStory['eventId'] == event_id)
 
         event_name = event['name']
-        event_outline = eventStory['outline'].replace('\n', '')
+        event_type = event['eventType']
+        event_unit = event['unit']
         assetbundleName = event['assetbundleName']
+        banner_chara_id = eventStory['bannerGameCharacterUnitId']
+        event_outline = eventStory['outline'].replace('\n', '')
+
+        if event_type == 'world_bloom':
+            if event_unit == 'none':
+                event_unit = 'piapro'
+            banner_name = f'{UNIT_CODE_NAME[event_unit]}_WL'
+        else:
+            banner_name = (
+                CHARA_ID_UNIT_AND_NAME | EXTRA_CHARA_ID_UNIT_AND_NAME_FOR_BANNER
+            )[banner_chara_id]
 
         event_filename = valid_filename(event_name)
-        event_save_dir = os.path.join(EVENT_SAVE_DIR, f'{event_id} {event_filename}')
+        event_save_dir = os.path.join(
+            EVENT_SAVE_DIR, f'{event_id} {event_filename}（{banner_name}）'
+        )
         os.makedirs(event_save_dir, exist_ok=True)
 
         for episode in eventStory['eventStoryEpisodes']:
@@ -396,6 +418,7 @@ if __name__ == '__main__':
     unit_getter = Unit_story_getter(reader)
     event_getter = Event_story_getter(reader)
     card_getter = Card_story_getter(reader)
+
     with ThreadPoolExecutor(max_workers=20) as executor:
         executor.map(unit_getter.get, range(1, 7))
         executor.map(event_getter.get, range(1, 141))
