@@ -257,6 +257,7 @@ class Unit_story_getter:
         for unitProfile in self.unitProfiles_json:
             if unitProfile['seq'] == unit_id:
                 unitName = unitProfile['unitName']
+                unitCode = unitProfile['unit']
                 unit_outline = unitProfile['profileSentence']
                 break
         else:
@@ -276,7 +277,7 @@ class Unit_story_getter:
 
         for episode in episodes:
             episode_name = (
-                f"{episode['chapterNo']}-{episode['episodeNo']} {episode['title']}"
+                f"{UNIT_CODE_NAME[unitCode]}-{episode['episodeNo']} {episode['title']}"
             )
             scenarioId = episode['scenarioId']
             res = requests.get(
