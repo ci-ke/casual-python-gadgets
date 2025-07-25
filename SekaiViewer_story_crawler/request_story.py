@@ -211,6 +211,12 @@ class Event_story_getter:
             episode_name = (
                 f"{episode['eventStoryId']}-{episode['episodeNo']} {episode['title']}"
             )
+            if event_type == 'world_bloom':
+                gameCharacterId = episode.get('gameCharacterId', -1)
+                if gameCharacterId != -1:
+                    chara_name = CHARA_ID_UNIT_AND_NAME[gameCharacterId].split('_')[1]
+                    episode_name += f"（{chara_name}）"
+
             scenarioId = episode['scenarioId']
 
             res = requests.get(
@@ -394,7 +400,7 @@ class Card_story_getter:
 class DictLookup:
     def __init__(self, data: list[dict[str, Any]], attr_name: str):
         self.data = data
-        self.ids = [int(d[attr_name]) for d in data]  # 预提取ID列表
+        self.ids = [int(d[attr_name]) for d in data]
 
     def find_index(self, target_id: int) -> int:
         left_index = bisect.bisect_left(self.ids, target_id)
