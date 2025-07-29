@@ -92,11 +92,18 @@ RARITY_NAME = {
 
 
 class Story_reader:
-    def __init__(self) -> None:
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/character2ds.json',
-            proxies=PROXY,
-        )
+    def __init__(self, lang: str = 'cn') -> None:
+        self.lang = lang
+        if lang == 'cn':
+            character2ds_url = 'https://sekai-world.github.io/sekai-master-db-cn-diff/character2ds.json'
+        elif lang == 'jp':
+            character2ds_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/character2ds.json'
+            )
+        else:
+            raise NotImplementedError
+
+        res = requests.get(character2ds_url, proxies=PROXY)
         res.raise_for_status()
         self.character2ds: list[dict[str, Any]] = res.json()
 
@@ -163,27 +170,47 @@ class Story_reader:
 
 class Event_story_getter:
     def __init__(self, reader: Story_reader) -> None:
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/events.json',
-            proxies=PROXY,
-        )
+        if reader.lang == 'cn':
+            events_url = (
+                'https://sekai-world.github.io/sekai-master-db-cn-diff/events.json'
+            )
+            eventStories_url = 'https://sekai-world.github.io/sekai-master-db-cn-diff/eventStories.json'
+            self.asset_url = 'https://storage.sekai.best/sekai-cn-assets/event_story/{assetbundleName}/scenario/{scenarioId}.asset'
+        elif reader.lang == 'jp':
+            events_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/events.json'
+            )
+            eventStories_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/eventStories.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/event_story/{assetbundleName}/scenario/{scenarioId}.asset'
+        else:
+            raise NotImplementedError
+
+        res = requests.get(events_url, proxies=PROXY)
         res.raise_for_status()
         self.events_json: list[dict[str, Any]] = res.json()
 
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/eventStories.json',
-            proxies=PROXY,
-        )
+        res = requests.get(eventStories_url, proxies=PROXY)
         res.raise_for_status()
         self.eventStories_json: list[dict[str, Any]] = res.json()
+
+        self.events_lookup = DictLookup(self.events_json, 'id')
+        self.eventStories_lookup = DictLookup(self.eventStories_json, 'eventId')
 
         self.reader = reader
 
     def get(self, event_id: int) -> None:
-        event = self.events_json[event_id - 1]
-        eventStory = self.eventStories_json[event_id - 1]
 
-        assert (event['id'] == event_id) and (eventStory['eventId'] == event_id)
+        event_index = self.events_lookup.find_index(event_id)
+        eventStory_index = self.eventStories_lookup.find_index(event_id)
+
+        if (event_index == -1) or (eventStory_index == -1):
+            print(f'event {event_id} does not exist.')
+            return
+
+        event = self.events_json[event_index]
+        eventStory = self.eventStories_json[eventStory_index]
 
         event_name = event['name']
         event_type = event['eventType']
@@ -202,9 +229,13 @@ class Event_story_getter:
             )[banner_chara_id]
 
         event_filename = valid_filename(event_name)
-        event_save_dir = os.path.join(
-            EVENT_SAVE_DIR, f'{event_id} {event_filename}（{banner_name}）'
-        )
+        save_folder_name = f'{event_id} {event_filename}（{banner_name}）'
+
+        if self.reader.lang != 'cn':
+            save_folder_name = self.reader.lang + '-' + save_folder_name
+
+        event_save_dir = os.path.join(EVENT_SAVE_DIR, save_folder_name)
+
         os.makedirs(event_save_dir, exist_ok=True)
 
         for episode in eventStory['eventStoryEpisodes']:
@@ -220,7 +251,9 @@ class Event_story_getter:
             scenarioId = episode['scenarioId']
 
             res = requests.get(
-                f'https://storage.sekai.best/sekai-cn-assets/event_story/{assetbundleName}/scenario/{scenarioId}.asset',
+                self.asset_url.format(
+                    assetbundleName=assetbundleName, scenarioId=scenarioId
+                ),
                 proxies=PROXY,
             )
             res.raise_for_status()
@@ -243,17 +276,28 @@ class Event_story_getter:
 
 class Unit_story_getter:
     def __init__(self, reader: Story_reader) -> None:
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/unitProfiles.json',
-            proxies=PROXY,
-        )
+        if reader.lang == 'cn':
+            unitProfiles_url = 'https://sekai-world.github.io/sekai-master-db-cn-diff/unitProfiles.json'
+            unitStories_url = (
+                'https://sekai-world.github.io/sekai-master-db-cn-diff/unitStories.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-cn-assets/scenario/unitstory/{assetbundleName}/{scenarioId}.asset'
+        elif reader.lang == 'jp':
+            unitProfiles_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/unitProfiles.json'
+            )
+            unitStories_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/unitStories.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/scenario/unitstory/{assetbundleName}/{scenarioId}.asset'
+        else:
+            raise NotImplementedError
+
+        res = requests.get(unitProfiles_url, proxies=PROXY)
         res.raise_for_status()
         self.unitProfiles_json: list[dict[str, Any]] = res.json()
 
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/unitStories.json',
-            proxies=PROXY,
-        )
+        res = requests.get(unitStories_url, proxies=PROXY)
         res.raise_for_status()
         self.unitStories_json: list[dict[str, Any]] = res.json()
 
@@ -267,7 +311,8 @@ class Unit_story_getter:
                 unit_outline = unitProfile['profileSentence']
                 break
         else:
-            raise ValueError(f'bad unit id:{unit_id}')
+            print(f'unit {unit_id} does not exist.')
+            return
 
         for unitStory in self.unitStories_json:
             if unitStory['seq'] == unit_id:
@@ -275,10 +320,16 @@ class Unit_story_getter:
                 episodes = unitStory['chapters'][0]['episodes']
                 break
         else:
-            raise ValueError(f'bad unit id:{unit_id}')
+            print(f'unit {unit_id} does not exist.')
+            return
 
         unit_filename = valid_filename(unitName)
-        unit_save_dir = os.path.join(UNIT_SAVE_DIR, f'{unit_id} {unit_filename}')
+        save_folder_name = f'{unit_id} {unit_filename}'
+
+        if self.reader.lang != 'cn':
+            save_folder_name = self.reader.lang + '-' + save_folder_name
+
+        unit_save_dir = os.path.join(UNIT_SAVE_DIR, save_folder_name)
         os.makedirs(unit_save_dir, exist_ok=True)
 
         for episode in episodes:
@@ -287,7 +338,9 @@ class Unit_story_getter:
             )
             scenarioId = episode['scenarioId']
             res = requests.get(
-                f'https://storage.sekai.best/sekai-cn-assets/scenario/unitstory/{assetbundleName}/{scenarioId}.asset',
+                self.asset_url.format(
+                    assetbundleName=assetbundleName, scenarioId=scenarioId
+                ),
                 proxies=PROXY,
             )
             res.raise_for_status()
@@ -310,17 +363,26 @@ class Unit_story_getter:
 
 class Card_story_getter:
     def __init__(self, reader: Story_reader) -> None:
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json',
-            proxies=PROXY,
-        )
+        if reader.lang == 'cn':
+            cards_url = (
+                'https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json'
+            )
+            cardEpisodes_url = 'https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json'
+            self.asset_url = 'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{scenarioId}.asset'
+        elif reader.lang == 'jp':
+            cards_url = 'https://sekai-world.github.io/sekai-master-db-diff/cards.json'
+            cardEpisodes_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/cardEpisodes.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/character/member/{assetbundleName}/{scenarioId}.asset'
+        else:
+            raise NotImplementedError
+
+        res = requests.get(cards_url, proxies=PROXY)
         res.raise_for_status()
         self.cards_json: list[dict[str, Any]] = res.json()
 
-        res = requests.get(
-            f'https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json',
-            proxies=PROXY,
-        )
+        res = requests.get(cardEpisodes_url, proxies=PROXY)
         res.raise_for_status()
         self.cardEpisodes_json: list[dict[str, Any]] = res.json()
 
@@ -332,6 +394,7 @@ class Card_story_getter:
     def get(self, card_id: int) -> None:
         card_index = self.cards_lookup.find_index(card_id)
         cardEpisode_index = self.cardEpisodes_lookup.find_index(card_id)
+
         if (card_index == -1) or (cardEpisode_index == -1):
             print(f'card {card_id} does not exist.')
             return
@@ -357,7 +420,9 @@ class Card_story_getter:
         os.makedirs(card_save_dir, exist_ok=True)
 
         res = requests.get(
-            f'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{story_1_scenarioId}.asset',
+            self.asset_url.format(
+                assetbundleName=assetbundleName, scenarioId=story_1_scenarioId
+            ),
             proxies=PROXY,
         )
         res.raise_for_status()
@@ -365,7 +430,9 @@ class Card_story_getter:
         text_1 = self.reader.read_story_in_json(story_1_json)
 
         res = requests.get(
-            f'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{story_2_scenarioId}.asset',
+            self.asset_url.format(
+                assetbundleName=assetbundleName, scenarioId=story_2_scenarioId
+            ),
             proxies=PROXY,
         )
         res.raise_for_status()
@@ -380,6 +447,9 @@ class Card_story_getter:
         card_story_filename = valid_filename(
             f'{card_id}_{chara_name}{sub_unit_name}_{card_id_for_chara}_{cardRarityType} {card_name}'
         )
+
+        if self.reader.lang != 'cn':
+            card_story_filename = self.reader.lang + '-' + card_story_filename
 
         with open(
             os.path.join(card_save_dir, card_story_filename) + '.txt',
@@ -428,6 +498,6 @@ if __name__ == '__main__':
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         executor.map(unit_getter.get, range(1, 7))
-        executor.map(event_getter.get, range(1, 141))
+        executor.map(event_getter.get, range(1, 140))
         executor.map(card_getter.get, range(1, 108))
         executor.map(card_getter.get, range(724, 760))
