@@ -90,7 +90,13 @@ def get_event_story(event_id: int, lang: str = 'cn') -> None:
 
     event_filename = valid_filename(event_name)
 
-    event_save_dir = os.path.join(EVENT_SAVE_DIR, f'{event_id} {event_filename}')
+    save_folder_name = f'{event_id} {event_filename}'
+
+    if lang != 'cn':
+        save_folder_name = lang + '-' + save_folder_name
+
+    event_save_dir = os.path.join(EVENT_SAVE_DIR, save_folder_name)
+
     os.makedirs(event_save_dir, exist_ok=True)
 
     if event_id == 248:
@@ -167,11 +173,11 @@ def get_band_story(
             )
             continue
 
-        band_save_dir = os.path.join(
-            BAND_SAVE_DIR,
-            band_name,
-            f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}',
-        )
+        save_folder_name = f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}'
+        if lang != 'cn':
+            save_folder_name = lang + '-' + save_folder_name
+
+        band_save_dir = os.path.join(BAND_SAVE_DIR, band_name, save_folder_name)
         os.makedirs(band_save_dir, exist_ok=True)
 
         for story in band_story['stories'].values():
@@ -220,6 +226,10 @@ def get_main_story(id_range: Optional[Sequence[int]] = None, lang: str = 'cn') -
             continue
 
         name = f"{main_story['scenarioId']} {main_story['caption'][LANG_INDEX[lang]]} {main_story['title'][LANG_INDEX[lang]]}"
+
+        if lang != 'cn':
+            name = lang + '-' + name
+
         synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
         id = main_story['scenarioId']
 
