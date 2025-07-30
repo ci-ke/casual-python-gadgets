@@ -8,6 +8,7 @@
 
 # 卡牌 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json
 # 卡牌剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json
+# 卡牌所属活动：https://sekai-world.github.io/sekai-master-db-cn-diff/eventCards.json
 # 数据包json：https://storage.sekai.best/sekai-cn-assets/character/member/res001_no001/001001_ichika01.asset
 
 import bisect
@@ -368,11 +369,17 @@ class Card_story_getter:
                 'https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json'
             )
             cardEpisodes_url = 'https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json'
+            eventCards_url = (
+                'https://sekai-world.github.io/sekai-master-db-cn-diff/eventCards.json'
+            )
             self.asset_url = 'https://storage.sekai.best/sekai-cn-assets/character/member/{assetbundleName}/{scenarioId}.asset'
         elif reader.lang == 'jp':
             cards_url = 'https://sekai-world.github.io/sekai-master-db-diff/cards.json'
             cardEpisodes_url = (
                 'https://sekai-world.github.io/sekai-master-db-diff/cardEpisodes.json'
+            )
+            eventCards_url = (
+                'https://sekai-world.github.io/sekai-master-db-diff/eventCards.json'
             )
             self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/character/member/{assetbundleName}/{scenarioId}.asset'
         else:
@@ -386,8 +393,13 @@ class Card_story_getter:
         res.raise_for_status()
         self.cardEpisodes_json: list[dict[str, Any]] = res.json()
 
+        res = requests.get(eventCards_url, proxies=PROXY)
+        res.raise_for_status()
+        self.eventCards_json: list[dict[str, Any]] = res.json()
+
         self.cards_lookup = DictLookup(self.cards_json, 'id')
         self.cardEpisodes_lookup = DictLookup(self.cardEpisodes_json, 'cardId')
+        self.eventCards_lookup = DictLookup(self.eventCards_json, 'cardId')
 
         self.reader = reader
 
@@ -444,8 +456,16 @@ class Card_story_getter:
         else:
             sub_unit_name = ''
 
+        card_event_index = self.eventCards_lookup.find_index(card_id)
+        if card_event_index == -1:
+            belong_event = ''
+        else:
+            belong_event = (
+                f"（event-{self.eventCards_json[card_event_index]['eventId']}）"
+            )
+
         card_story_filename = valid_filename(
-            f'{card_id}_{chara_name}{sub_unit_name}_{card_id_for_chara}_{cardRarityType} {card_name}'
+            f'{card_id}_{chara_name}{sub_unit_name}_{card_id_for_chara}_{cardRarityType} {card_name}{belong_event}'
         )
 
         if self.reader.lang != 'cn':
@@ -457,7 +477,7 @@ class Card_story_getter:
             encoding='utf8',
         ) as f:
             f.write(
-                f'{chara_name}{sub_unit_name}-{card_id_for_chara} {card_name}\n\n\n'
+                f'{chara_name}{sub_unit_name}-{card_id_for_chara} {card_name}{belong_event}\n\n\n'
             )
             f.write(story_1_name + '\n\n')
             f.write(text_1 + '\n\n\n')
