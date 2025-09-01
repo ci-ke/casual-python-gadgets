@@ -101,6 +101,8 @@ class Story_reader:
             character2ds_url = (
                 'https://sekai-world.github.io/sekai-master-db-diff/character2ds.json'
             )
+        elif lang == 'tw':
+            character2ds_url = 'https://sekai-world.github.io/sekai-master-db-tc-diff/character2ds.json'
         else:
             raise NotImplementedError
 
@@ -185,6 +187,12 @@ class Event_story_getter:
                 'https://sekai-world.github.io/sekai-master-db-diff/eventStories.json'
             )
             self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/event_story/{assetbundleName}/scenario/{scenarioId}.asset'
+        elif reader.lang == 'tw':
+            events_url = (
+                'https://sekai-world.github.io/sekai-master-db-tc-diff/events.json'
+            )
+            eventStories_url = 'https://sekai-world.github.io/sekai-master-db-tc-diff/eventStories.json'
+            self.asset_url = 'https://storage.sekai.best/sekai-tc-assets/event_story/{assetbundleName}/scenario/{scenarioId}.asset'
         else:
             raise NotImplementedError
 
@@ -291,6 +299,12 @@ class Unit_story_getter:
                 'https://sekai-world.github.io/sekai-master-db-diff/unitStories.json'
             )
             self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/scenario/unitstory/{assetbundleName}/{scenarioId}.asset'
+        elif reader.lang == 'tw':
+            unitProfiles_url = 'https://sekai-world.github.io/sekai-master-db-tc-diff/unitProfiles.json'
+            unitStories_url = (
+                'https://sekai-world.github.io/sekai-master-db-tc-diff/unitStories.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-tc-assets/scenario/unitstory/{assetbundleName}/{scenarioId}.asset'
         else:
             raise NotImplementedError
 
@@ -382,6 +396,15 @@ class Card_story_getter:
                 'https://sekai-world.github.io/sekai-master-db-diff/eventCards.json'
             )
             self.asset_url = 'https://storage.sekai.best/sekai-jp-assets/character/member/{assetbundleName}/{scenarioId}.asset'
+        elif reader.lang == 'tw':
+            cards_url = (
+                'https://sekai-world.github.io/sekai-master-db-tc-diff/cards.json'
+            )
+            cardEpisodes_url = 'https://sekai-world.github.io/sekai-master-db-tc-diff/cardEpisodes.json'
+            eventCards_url = (
+                'https://sekai-world.github.io/sekai-master-db-tc-diff/eventCards.json'
+            )
+            self.asset_url = 'https://storage.sekai.best/sekai-tc-assets/character/member/{assetbundleName}/{scenarioId}.asset'
         else:
             raise NotImplementedError
 
