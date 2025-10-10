@@ -225,7 +225,7 @@ class Event_story_getter:
         event_type = event['eventType']
         event_unit = event['unit']
         assetbundleName = event['assetbundleName']
-        banner_chara_id = eventStory['bannerGameCharacterUnitId']
+        banner_chara_id = eventStory.get('bannerGameCharacterUnitId', None)
         event_outline = eventStory['outline'].replace('\n', '')
 
         if event_type == 'world_bloom':
@@ -233,6 +233,7 @@ class Event_story_getter:
                 event_unit = 'piapro'
             banner_name = f'{UNIT_CODE_NAME[event_unit]}_WL'
         else:
+            assert banner_chara_id is not None
             banner_name = (
                 CHARA_ID_UNIT_AND_NAME | EXTRA_CHARA_ID_UNIT_AND_NAME_FOR_BANNER
             )[banner_chara_id]
@@ -544,3 +545,4 @@ if __name__ == '__main__':
         executor.map(event_getter.get, range(1, 140))
         executor.map(card_getter.get, range(1, 108))
         executor.map(card_getter.get, range(724, 760))
+
