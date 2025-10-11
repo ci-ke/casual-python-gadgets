@@ -11,8 +11,14 @@
 # 数据包列表：https://bestdori.com/api/explorer/cn/assets/scenario/main.json
 # 数据包json：https://bestdori.com/assets/cn/scenario/main_rip/Scenariomain001.asset
 
+# 所有卡牌 列表：https://bestdori.com/api/cards/all.0.json
+# 所有卡牌 摘要：https://bestdori.com/api/cards/all.5.json
+# 卡牌 摘要：https://bestdori.com/api/cards/1.json
+# 数据包json1：https://bestdori.com/assets/jp/characters/resourceset/res001001_rip/Scenarioepisode001.asset
+# 数据包json2：https://bestdori.com/assets/jp/characters/resourceset/res001001_rip/Scenariomemorial001.asset
+
 from concurrent.futures import ThreadPoolExecutor
-import os, sys
+import os
 from typing import Any, Dict, Optional, Sequence
 import requests  # type: ignore
 
@@ -21,6 +27,7 @@ BASE_SAVE_DIR = r'.'
 EVENT_SAVE_DIR = BASE_SAVE_DIR + r'\event_story'
 BAND_SAVE_DIR = BASE_SAVE_DIR + r'\band_story'
 MAIN_SAVE_DIR = BASE_SAVE_DIR + r'\main_story'
+CARD_SAVE_DIR = BASE_SAVE_DIR + r'\card_story'
 
 PROXY = None
 # PROXY = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
@@ -28,6 +35,7 @@ PROXY = None
 
 ### CONSTANT
 LANG_INDEX = {'jp': 0, 'en': 1, 'tw': 2, 'cn': 3, 'kr': 4}
+
 BAND_ID_NAME = {
     1: 'Poppin\'Party',
     2: 'Afterglow',
@@ -38,7 +46,49 @@ BAND_ID_NAME = {
     21: 'Morfonica',
     45: 'MyGO!!!!!',
 }
-EVENT_IS_MAIN = [217]
+
+CHARA_ID_BAND_AND_NAME = {
+    1: 'PPP_户山香澄',
+    2: 'PPP_花园多惠',
+    3: 'PPP_牛込里美',
+    4: 'PPP_山吹沙绫',
+    5: 'PPP_市谷有咲',
+    6: 'AG_美竹兰',
+    7: 'AG_青叶摩卡',
+    8: 'AG_上原绯玛丽',
+    9: 'AG_宇田川巴',
+    10: 'AG_羽泽鸫',
+    11: 'HHW_弦卷心',
+    12: 'HHW_濑田薰',
+    13: 'HHW_北泽育美',
+    14: 'HHW_松原花音',
+    15: 'HHW_奥泽美咲-米歇尔',
+    16: 'PP_丸山彩',
+    17: 'PP_冰川日菜',
+    18: 'PP_白鹭千圣',
+    19: 'PP_大和麻弥',
+    20: 'PP_若宫伊芙',
+    21: 'Ro_凑友希那',
+    22: 'Ro_冰川纱夜',
+    23: 'Ro_今井莉莎',
+    24: 'Ro_宇田川亚子',
+    25: 'Ro_白金燐子',
+    26: 'Mor_仓田真白',
+    27: 'Mor_桐谷透子',
+    28: 'Mor_广町七深',
+    29: 'Mor_二叶筑紫',
+    30: 'Mor_八潮瑠唯',
+    31: 'RAS_和奏瑞依-LAYER',
+    32: 'RAS_朝日六花-LOCK',
+    33: 'RAS_佐藤益木-MASKING',
+    34: 'RAS_鳰原令王那-PAREO',
+    35: 'RAS_珠手知由-CHU²',
+    36: 'Mygo_高松灯',
+    37: 'Mygo_千早爱音',
+    38: 'Mygo_要乐奈',
+    39: 'Mygo_长崎爽世',
+    40: 'Mygo_椎名立希',
+}
 
 
 def read_story_in_json(json_data: Dict[str, Dict[str, Any]]) -> str:
@@ -76,180 +126,283 @@ def read_story_in_json(json_data: Dict[str, Dict[str, Any]]) -> str:
     return ret[:-1]
 
 
-def get_event_story(event_id: int, lang: str = 'cn') -> None:
-    res = requests.get(
-        f'https://bestdori.com/api/events/{event_id}.json', proxies=PROXY
-    )
-    res.raise_for_status()
-    res_json: Dict[str, Any] = res.json()
+class Event_story_getter:
+    def __init__(self) -> None:
+        self.event_is_main = [217]
+        self.event_no_story = [248]
 
-    event_name = res_json['eventName'][LANG_INDEX[lang]]
-    if event_name is None:
-        print(f'event {event_id} has no {lang.upper()}.')
-        return
+        self.info_url = 'https://bestdori.com/api/events/{event_id}.json'
+        self.story_url = 'https://bestdori.com/assets/{lang}/scenario/eventstory/event{event_id}_rip/Scenario{id}.asset'
 
-    event_filename = valid_filename(event_name)
+    def get(self, event_id: int, lang: str = 'cn') -> None:
+        res = requests.get(
+            self.info_url.format(event_id=event_id),
+            proxies=PROXY,
+        )
+        res.raise_for_status()
+        res_json: Dict[str, Any] = res.json()
 
-    save_folder_name = f'{event_id} {event_filename}'
+        event_name = res_json['eventName'][LANG_INDEX[lang]]
+        if event_name is None:
+            print(f'event {event_id} has no {lang.upper()}.')
+            return
 
-    if lang != 'cn':
-        save_folder_name = lang + '-' + save_folder_name
+        event_filename = valid_filename(event_name)
 
-    event_save_dir = os.path.join(EVENT_SAVE_DIR, save_folder_name)
+        save_folder_name = f'{event_id} {event_filename}'
 
-    os.makedirs(event_save_dir, exist_ok=True)
-
-    if event_id == 248:
-        with open(
-            os.path.join(event_save_dir, '无剧情.txt'), 'w', encoding='utf8'
-        ) as f:
-            f.write('本活动没有活动剧情\n')
-        return
-
-    for story in res_json['stories']:
-        name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
-        synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
-        id = story['scenarioId']
-
-        if ('bandStoryId' not in story) and (event_id not in EVENT_IS_MAIN):
-            res2 = requests.get(
-                f'https://bestdori.com/assets/{lang}/scenario/eventstory/event{event_id}_rip/Scenario{id}.asset',
-                proxies=PROXY,
-            )
-            res2.raise_for_status()
-            res_json2: Dict[str, Dict[str, Any]] = res2.json()
-
-            text = read_story_in_json(res_json2)
-        elif event_id in EVENT_IS_MAIN:
-            text = '见主线故事'
-        else:
-            text = '见乐队故事'
-
-        filename = valid_filename(name)
-
-        with open(
-            os.path.join(event_save_dir, filename) + '.txt', 'w', encoding='utf8'
-        ) as f:
-            f.write(name + '\n\n')
-            f.write(synopsis + '\n\n')
-            f.write(text + '\n')
-
-        print(f'get event {event_id} {event_name} {name} done.')
-
-
-def get_band_story(
-    want_band_id: Optional[int] = None,
-    want_chapter_number: Optional[int] = None,
-    lang: str = 'cn',
-) -> None:
-    if want_band_id is not None:
-        assert want_band_id in BAND_ID_NAME
-
-    res = requests.get(
-        'https://bestdori.com/api/misc/bandstories.5.json', proxies=PROXY
-    )
-    res.raise_for_status()
-    res_json: Dict[str, Dict[str, Any]] = res.json()
-
-    for band_story in res_json.values():
-        band_id = band_story['bandId']
-        try:
-            chapterNumber = band_story['chapterNumber']
-        except KeyError:
-            continue
-
-        if want_band_id is not None:
-            if want_band_id != band_id:
-                continue
-        if want_chapter_number is not None:
-            if want_chapter_number != chapterNumber:
-                continue
-
-        band_name = BAND_ID_NAME[band_id]
-
-        if band_story['mainTitle'][LANG_INDEX[lang]] == None:
-            print(
-                f'band story {band_name} {band_story["mainTitle"][0]} {band_story["subTitle"][0]} has no {lang.upper()}.'
-            )
-            continue
-
-        save_folder_name = f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}'
         if lang != 'cn':
             save_folder_name = lang + '-' + save_folder_name
 
-        band_save_dir = os.path.join(BAND_SAVE_DIR, band_name, save_folder_name)
-        os.makedirs(band_save_dir, exist_ok=True)
+        event_save_dir = os.path.join(EVENT_SAVE_DIR, save_folder_name)
 
-        for story in band_story['stories'].values():
+        os.makedirs(event_save_dir, exist_ok=True)
+
+        if event_id in self.event_no_story:
+            with open(
+                os.path.join(event_save_dir, '无剧情.txt'), 'w', encoding='utf8'
+            ) as f:
+                f.write('本活动没有活动剧情\n')
+            return
+
+        for story in res_json['stories']:
             name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
             synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
             id = story['scenarioId']
 
-            res2 = requests.get(
-                f'https://bestdori.com/assets/{lang}/scenario/band/{band_id:03}_rip/Scenario{id}.asset',
-                proxies=PROXY,
-            )
+            if ('bandStoryId' not in story) and (event_id not in self.event_is_main):
+                res2 = requests.get(
+                    self.story_url.format(lang=lang, event_id=event_id, id=id),
+                    proxies=PROXY,
+                )
+                res2.raise_for_status()
+                res_json2: Dict[str, Dict[str, Any]] = res2.json()
+
+                text = read_story_in_json(res_json2)
+            elif event_id in self.event_is_main:
+                text = '见主线故事'
+            else:
+                text = '见乐队故事'
+
+            filename = valid_filename(name)
+
+            with open(
+                os.path.join(event_save_dir, filename) + '.txt', 'w', encoding='utf8'
+            ) as f:
+                f.write(name + '\n\n')
+                f.write(synopsis + '\n\n')
+                f.write(text + '\n')
+
+            print(f'get event {event_id} {event_name} {name} done.')
+
+
+class Band_story_getter:
+    def __init__(self) -> None:
+        self.info_url = 'https://bestdori.com/api/misc/bandstories.5.json'
+        self.story_url = 'https://bestdori.com/assets/{lang}/scenario/band/{band_id:03}_rip/Scenario{id}.asset'
+
+    def get(
+        self,
+        want_band_id: Optional[int] = None,
+        want_chapter_number: Optional[int] = None,
+        lang: str = 'cn',
+    ) -> None:
+        if want_band_id is not None:
+            assert want_band_id in BAND_ID_NAME
+
+        res = requests.get(self.info_url, proxies=PROXY)
+        res.raise_for_status()
+        res_json: Dict[str, Dict[str, Any]] = res.json()
+
+        for band_story in res_json.values():
+            band_id = band_story['bandId']
+            try:
+                chapterNumber = band_story['chapterNumber']
+            except KeyError:
+                continue
+
+            if want_band_id is not None:
+                if want_band_id != band_id:
+                    continue
+            if want_chapter_number is not None:
+                if want_chapter_number != chapterNumber:
+                    continue
+
+            band_name = BAND_ID_NAME[band_id]
+
+            if band_story['mainTitle'][LANG_INDEX[lang]] == None:
+                print(
+                    f'band story {band_name} {band_story["mainTitle"][0]} {band_story["subTitle"][0]} has no {lang.upper()}.'
+                )
+                continue
+
+            save_folder_name = f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}'
+            if lang != 'cn':
+                save_folder_name = lang + '-' + save_folder_name
+
+            band_save_dir = os.path.join(BAND_SAVE_DIR, band_name, save_folder_name)
+            os.makedirs(band_save_dir, exist_ok=True)
+
+            for story in band_story['stories'].values():
+                name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
+                synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
+                id = story['scenarioId']
+
+                res2 = requests.get(
+                    self.story_url.format(lang=lang, band_id=band_id, id=id),
+                    proxies=PROXY,
+                )
+                res2.raise_for_status()
+                res_json2: Dict[str, Dict[str, Any]] = res2.json()
+
+                text = read_story_in_json(res_json2)
+
+                with open(
+                    os.path.join(band_save_dir, name) + '.txt', 'w', encoding='utf8'
+                ) as f:
+                    f.write(name + '\n\n')
+                    f.write(synopsis + '\n\n')
+                    f.write(text + '\n')
+
+                print(
+                    f'get band story {band_name} {band_story["mainTitle"][LANG_INDEX[lang]]} {name} done.'
+                )
+
+
+class Main_story_getter:
+    def __init__(self) -> None:
+        self.info_url = 'https://bestdori.com/api/misc/mainstories.5.json'
+        self.story_url = (
+            'https://bestdori.com/assets/{lang}/scenario/main_rip/Scenario{id}.asset'
+        )
+
+    def get(self, id_range: Optional[Sequence[int]] = None, lang: str = 'cn') -> None:
+        res = requests.get(self.info_url, proxies=PROXY)
+        res.raise_for_status()
+        res_json: Dict[str, Dict[str, Any]] = res.json()
+
+        os.makedirs(MAIN_SAVE_DIR, exist_ok=True)
+
+        for strId, main_story in res_json.items():
+            if id_range is not None and int(strId) not in id_range:
+                continue
+
+            if main_story['title'][LANG_INDEX[lang]] == None:
+                print(
+                    f'main story {main_story["caption"][0]} {main_story["title"][0]} has no {lang.upper()}.'
+                )
+                continue
+
+            name = f"{main_story['scenarioId']} {main_story['caption'][LANG_INDEX[lang]]} {main_story['title'][LANG_INDEX[lang]]}"
+
+            if lang != 'cn':
+                name = lang + '-' + name
+
+            synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
+            id = main_story['scenarioId']
+
+            res2 = requests.get(self.story_url.format(lang=lang, id=id), proxies=PROXY)
             res2.raise_for_status()
             res_json2: Dict[str, Dict[str, Any]] = res2.json()
 
             text = read_story_in_json(res_json2)
 
             with open(
-                os.path.join(band_save_dir, name) + '.txt', 'w', encoding='utf8'
+                os.path.join(MAIN_SAVE_DIR, name) + '.txt', 'w', encoding='utf8'
             ) as f:
                 f.write(name + '\n\n')
                 f.write(synopsis + '\n\n')
                 f.write(text + '\n')
 
-            print(
-                f'get band story {band_name} {band_story["mainTitle"][LANG_INDEX[lang]]} {name} done.'
+            print(f'get main story {name} done.')
+
+
+class Card_story_getter:
+    def __init__(self) -> None:
+        self.all_cards_list_url = 'https://bestdori.com/api/cards/all.0.json'
+        self.info_url = 'https://bestdori.com/api/cards/{id}.json'
+        self.story_url = 'https://bestdori.com/assets/{lang}/characters/resourceset/{res_id}_rip/Scenario{scenarioId}.asset'
+
+        res = requests.get(self.all_cards_list_url, proxies=PROXY)
+        res.raise_for_status()
+        self.cards_ids: list[int] = [int(id) for id in res.json().keys()]
+
+    def get(self, card_id: int, lang: str = 'cn') -> None:
+        if card_id not in self.cards_ids:
+            print(f'card {card_id} does not exist.')
+            return
+
+        res = requests.get(self.info_url.format(id=card_id), proxies=PROXY)
+        res.raise_for_status()
+        card = res.json()
+
+        chara_band_and_name = CHARA_ID_BAND_AND_NAME[card['characterId']]
+        chara_name = chara_band_and_name.split('_')[1]
+        cardRarityType = card['rarity']
+        card_name = card['prefix'][LANG_INDEX[lang]]
+
+        if card_name is None:
+            print(f'card {card_id} has no {lang.upper()}.')
+            return
+
+        resourceSetName: str = card['resourceSetName']
+
+        if 'episodes' not in card:
+            card_has_story = False
+        else:
+            card_has_story = True
+
+            story_1_name = card['episodes']['entries'][0]['title'][LANG_INDEX[lang]]
+            story_2_name = card['episodes']['entries'][1]['title'][LANG_INDEX[lang]]
+
+            scenarioId_1 = card['episodes']['entries'][0]['scenarioId']
+            scenarioId_2 = card['episodes']['entries'][1]['scenarioId']
+
+            res = requests.get(
+                self.story_url.format(
+                    lang=lang, res_id=resourceSetName, scenarioId=scenarioId_1
+                ),
+                proxies=PROXY,
             )
+            res.raise_for_status()
+            story_1_json: Dict[str, Dict[str, Any]] = res.json()
+            text_1 = read_story_in_json(story_1_json)
 
-
-def get_main_story(id_range: Optional[Sequence[int]] = None, lang: str = 'cn') -> None:
-    res = requests.get(
-        'https://bestdori.com/api/misc/mainstories.5.json', proxies=PROXY
-    )
-    res.raise_for_status()
-    res_json: Dict[str, Dict[str, Any]] = res.json()
-
-    os.makedirs(MAIN_SAVE_DIR, exist_ok=True)
-
-    for strId, main_story in res_json.items():
-        if id_range is not None and int(strId) not in id_range:
-            continue
-
-        if main_story['title'][LANG_INDEX[lang]] == None:
-            print(
-                f'main story {main_story["caption"][0]} {main_story["title"][0]} has no {lang.upper()}.'
+            res = requests.get(
+                self.story_url.format(
+                    lang=lang, res_id=resourceSetName, scenarioId=scenarioId_2
+                ),
+                proxies=PROXY,
             )
-            continue
+            res.raise_for_status()
+            story_2_json: Dict[str, Dict[str, Any]] = res.json()
+            text_2 = read_story_in_json(story_2_json)
 
-        name = f"{main_story['scenarioId']} {main_story['caption'][LANG_INDEX[lang]]} {main_story['title'][LANG_INDEX[lang]]}"
+        card_save_dir = os.path.join(CARD_SAVE_DIR, chara_band_and_name)
+        os.makedirs(card_save_dir, exist_ok=True)
+
+        card_story_filename = valid_filename(
+            f'{card_id}_{chara_name}_{cardRarityType}星 {card_name}'
+        )
 
         if lang != 'cn':
-            name = lang + '-' + name
-
-        synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
-        id = main_story['scenarioId']
-
-        res2 = requests.get(
-            f'https://bestdori.com/assets/{lang}/scenario/main_rip/Scenario{id}.asset',
-            proxies=PROXY,
-        )
-        res2.raise_for_status()
-        res_json2: Dict[str, Dict[str, Any]] = res2.json()
-
-        text = read_story_in_json(res_json2)
+            card_story_filename = lang + '-' + card_story_filename
 
         with open(
-            os.path.join(MAIN_SAVE_DIR, name) + '.txt', 'w', encoding='utf8'
+            os.path.join(card_save_dir, card_story_filename) + '.txt',
+            'w',
+            encoding='utf8',
         ) as f:
-            f.write(name + '\n\n')
-            f.write(synopsis + '\n\n')
-            f.write(text + '\n')
+            if card_has_story:
+                f.write(f'{chara_name} {card_name}\n\n\n')
+                f.write(f'《{story_1_name}》' + '\n\n')
+                f.write(text_1 + '\n\n\n')  # pyright: ignore[reportOperatorIssue]
+                f.write(f'《{story_2_name}》' + '\n\n')
+                f.write(text_2 + '\n')  # pyright: ignore[reportOperatorIssue]
+            else:
+                f.write('本卡面没有剧情\n')
 
-        print(f'get main story {name} done.')
+        print(f'get card {card_story_filename} done.')
 
 
 def valid_filename(filename: str) -> str:
@@ -264,7 +417,5 @@ def valid_filename(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        executor.map(lambda _: get_main_story(), range(1))
-        executor.map(lambda _: get_band_story(), range(1))
-        executor.map(get_event_story, range(1, 282))
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        ...
