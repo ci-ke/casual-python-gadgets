@@ -1,18 +1,5 @@
-# 活动 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/events.json
-# 活动剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/eventStories.json
-# 数据包json：https://storage.sekai.best/sekai-cn-assets/event_story/event_stella_2020/scenario/event_01_01.asset
-
-# 组合 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/unitProfiles.json
-# 组合剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/unitStories.json
-# 数据包json：https://storage.sekai.best/sekai-cn-assets/scenario/unitstory/light-sound-story-chapter/leo_01_00.asset
-
-# 卡牌 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cards.json
-# 卡牌剧情 摘要：https://sekai-world.github.io/sekai-master-db-cn-diff/cardEpisodes.json
-# 卡牌所属活动：https://sekai-world.github.io/sekai-master-db-cn-diff/eventCards.json
-# 数据包json：https://storage.sekai.best/sekai-cn-assets/character/member/res001_no001/001001_ichika01.asset
-
 import bisect
-import os, sys
+import os
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor
 import requests  # type: ignore
@@ -147,6 +134,9 @@ class Story_reader:
                     next_talk_need_newline = True
                 elif scene['EffectType'] == 8:
                     ret += '\n【' + scene['StringVal'] + '】\n'
+                    next_talk_need_newline = True
+                elif scene['EffectType'] == 19:
+                    ret += '\n（播放视频）\n'
                     next_talk_need_newline = True
                 elif scene['EffectType'] == 24:
                     if next_talk_need_newline:
@@ -535,14 +525,15 @@ def valid_filename(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    reader = Story_reader()
+    reader = Story_reader('jp')
+
     unit_getter = Unit_story_getter(reader)
     event_getter = Event_story_getter(reader)
     card_getter = Card_story_getter(reader)
 
     with ThreadPoolExecutor(max_workers=20) as executor:
-        executor.map(unit_getter.get, range(1, 7))
-        executor.map(event_getter.get, range(1, 140))
-        executor.map(card_getter.get, range(1, 108))
-        executor.map(card_getter.get, range(724, 760))
-
+        # executor.map(unit_getter.get, range(1, 7))
+        # executor.map(event_getter.get, range(1, 147))
+        # executor.map(card_getter.get, range(1, 108))
+        # executor.map(card_getter.get, range(724, 760))
+        pass
