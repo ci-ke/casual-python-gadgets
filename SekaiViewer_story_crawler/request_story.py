@@ -1,3 +1,5 @@
+# https://github.com/ci-ke/casual-python-gadgets/blob/main/SekaiViewer_story_crawler/request_story.py
+
 import bisect
 import os
 from typing import Any
@@ -142,7 +144,9 @@ class Story_reader:
                     if next_talk_need_newline:
                         ret += '\n'
                     ret += (
-                        '（全屏幕文字）：' + scene['StringVal'].replace('\n', '') + '\n'
+                        '（全屏幕文字）：'
+                        + scene['StringVal'].replace('\n', ' ')
+                        + '\n'
                     )
                     next_talk_need_newline = False
             elif script['Action'] == 1:
@@ -153,7 +157,7 @@ class Story_reader:
                 ret += (
                     talk['WindowDisplayName']
                     + '：'
-                    + talk['Body'].replace('\n', '')
+                    + talk['Body'].replace('\n', ' ')
                     + '\n'
                 )
                 next_talk_need_newline = False
@@ -216,7 +220,7 @@ class Event_story_getter:
         event_unit = event['unit']
         assetbundleName = event['assetbundleName']
         banner_chara_id = eventStory.get('bannerGameCharacterUnitId', None)
-        event_outline = eventStory['outline'].replace('\n', '')
+        event_outline = eventStory['outline'].replace('\n', ' ')
 
         if event_type == 'world_bloom':
             if event_unit == 'none':
