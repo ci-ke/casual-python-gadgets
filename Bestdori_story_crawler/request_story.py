@@ -18,7 +18,7 @@
 # 数据包json2：https://bestdori.com/assets/jp/characters/resourceset/res001001_rip/Scenariomemorial001.asset
 
 from concurrent.futures import ThreadPoolExecutor
-import os
+import os, itertools
 from typing import Any, Dict, Optional, Sequence
 import requests  # type: ignore
 
@@ -112,14 +112,17 @@ def read_story_in_json(json_data: Dict[str, Dict[str, Any]]) -> str:
             elif scene['effectType'] == 24:
                 if next_talk_need_newline:
                     ret += '\n'
-                ret += '（全屏幕文字）：' + scene['stringVal'].replace('\n', '') + '\n'
+                ret += '（全屏幕文字）：' + scene['stringVal'].replace('\n', ' ') + '\n'
                 next_talk_need_newline = False
         elif script['actionType'] == 1:
             talk = talks[script['referenceIndex']]
             if next_talk_need_newline:
                 ret += '\n'
             ret += (
-                talk['windowDisplayName'] + '：' + talk['body'].replace('\n', '') + '\n'
+                talk['windowDisplayName']
+                + '：'
+                + talk['body'].replace('\n', ' ')
+                + '\n'
             )
             next_talk_need_newline = False
 
@@ -167,7 +170,7 @@ class Event_story_getter:
 
         for story in res_json['stories']:
             name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
-            synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
+            synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', ' ')
             id = story['scenarioId']
 
             if ('bandStoryId' not in story) and (event_id not in self.event_is_main):
@@ -245,7 +248,7 @@ class Band_story_getter:
 
             for story in band_story['stories'].values():
                 name = f"{story['scenarioId']} {story['caption'][LANG_INDEX[lang]]} {story['title'][LANG_INDEX[lang]]}"
-                synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
+                synopsis = story['synopsis'][LANG_INDEX[lang]].replace('\n', ' ')
                 id = story['scenarioId']
 
                 res2 = requests.get(
@@ -298,7 +301,7 @@ class Main_story_getter:
             if lang != 'cn':
                 name = lang + '-' + name
 
-            synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', '')
+            synopsis = main_story['synopsis'][LANG_INDEX[lang]].replace('\n', ' ')
             id = main_story['scenarioId']
 
             res2 = requests.get(self.story_url.format(lang=lang, id=id), proxies=PROXY)
@@ -417,5 +420,9 @@ def valid_filename(filename: str) -> str:
 
 
 if __name__ == '__main__':
+    a = Event_story_getter()
+    a.get(292)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
-        ...
+        pass
+        # executor.map(a.get, range(2202, 2207), itertools.repeat('cn'))
