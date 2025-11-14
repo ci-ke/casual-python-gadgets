@@ -239,7 +239,9 @@ class Band_story_getter:
                 )
                 continue
 
-            save_folder_name = f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}'
+            save_folder_name = valid_filename(
+                f'{band_story["mainTitle"][LANG_INDEX[lang]]} {band_story["subTitle"][LANG_INDEX[lang]]}'
+            )
             if lang != 'cn':
                 save_folder_name = lang + '-' + save_folder_name
 
@@ -261,7 +263,9 @@ class Band_story_getter:
                 text = read_story_in_json(res_json2)
 
                 with open(
-                    os.path.join(band_save_dir, name) + '.txt', 'w', encoding='utf8'
+                    os.path.join(band_save_dir, valid_filename(name)) + '.txt',
+                    'w',
+                    encoding='utf8',
                 ) as f:
                     f.write(name + '\n\n')
                     f.write(synopsis + '\n\n')
@@ -311,7 +315,9 @@ class Main_story_getter:
             text = read_story_in_json(res_json2)
 
             with open(
-                os.path.join(MAIN_SAVE_DIR, name) + '.txt', 'w', encoding='utf8'
+                os.path.join(MAIN_SAVE_DIR, valid_filename(name)) + '.txt',
+                'w',
+                encoding='utf8',
             ) as f:
                 f.write(name + '\n\n')
                 f.write(synopsis + '\n\n')
@@ -420,9 +426,16 @@ def valid_filename(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    a = Event_story_getter()
-    a.get(292)
+    m = Main_story_getter()
+    b = Band_story_getter()
+    e = Event_story_getter()
+    c = Card_story_getter()
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         pass
-        # executor.map(a.get, range(2202, 2207), itertools.repeat('cn'))
+        # executor.submit(m.get, None, 'cn')
+        # executor.submit(m.get, None, 'jp')
+        # executor.submit(b.get, None, None, 'cn')
+        # executor.submit(b.get, None, None, 'jp')
+        # executor.map(e.get, range(1, 313), itertools.repeat('jp'))
+        # executor.map(e.get, list(range(1, 293)) + [312], itertools.repeat('cn'))
