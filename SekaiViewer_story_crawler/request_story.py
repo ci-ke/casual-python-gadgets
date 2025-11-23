@@ -525,6 +525,7 @@ def valid_filename(filename: str) -> str:
         .replace('/', '／')
         .replace('?', '？')
         .replace('"', "''")
+        .replace('\n', '')
     )
 
 
