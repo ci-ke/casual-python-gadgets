@@ -1,9 +1,9 @@
-# https://github.com/ci-ke/casual-python-gadgets/blob/main/SekaiViewer_story_crawler/request_story.py
+# https://github.com/ci-ke/casual-python-gadgets/blob/main/PJSK/request_story_from_Sekaiviewer.py
 
 import bisect
 import os
 from typing import Any
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 import requests  # type: ignore
 
 
@@ -537,8 +537,28 @@ if __name__ == '__main__':
     card_getter = Card_story_getter(reader)
 
     with ThreadPoolExecutor(max_workers=20) as executor:
-        # executor.map(unit_getter.get, range(1, 7))
-        # executor.map(event_getter.get, range(1, 147))
-        # executor.map(card_getter.get, range(1, 108))
-        # executor.map(card_getter.get, range(724, 760))
-        pass
+
+        futures: list[Future[None]] = []
+        future: Future[None]
+
+        # for i in range(1, 7):
+        #    future = executor.submit(unit_getter.get, i)
+        #    futures.append(future)
+        # for i in range(1, 147):
+        #    future = executor.submit(event_getter.get, i)
+        #    futures.append(future)
+        # for i in range(1, 108): # initial card
+        #    future = executor.submit(card_getter.get, i)
+        #    futures.append(future)
+        # for i in range(724, 760): # 2nd grade card
+        #    future = executor.submit(card_getter.get, i)
+        #    futures.append(future)
+
+        future = executor.submit(event_getter.get, 189)
+        futures.append(future)
+
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+            except Exception as e:
+                print(f"Exception: {e}")

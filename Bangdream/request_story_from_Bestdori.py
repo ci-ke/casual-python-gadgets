@@ -432,10 +432,15 @@ if __name__ == '__main__':
     c = Card_story_getter()
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        pass
-        # executor.submit(m.get, None, 'cn')
-        # executor.submit(m.get, None, 'jp')
-        # executor.submit(b.get, None, None, 'cn')
-        # executor.submit(b.get, None, None, 'jp')
-        # executor.map(e.get, range(1, 313), itertools.repeat('jp'))
-        # executor.map(e.get, list(range(1, 293)) + [312], itertools.repeat('cn'))
+        futures: list[Future[None]] = []
+        future: Future[None]
+
+        for i in [293, 294]:
+            future = executor.submit(e.get, i)
+            futures.append(future)
+
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+            except Exception as e:
+                print(f"Exception: {e}")
